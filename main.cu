@@ -15,6 +15,8 @@
 #define SIG0(x) (ROTRIGHT(x,7) ^ ROTRIGHT(x,18) ^ ((x) >> 3))
 #define SIG1(x) (ROTRIGHT(x,17) ^ ROTRIGHT(x,19) ^ ((x) >> 10))
 
+SHA256_CTX *d_ctx;
+
 /**************************** VARIABLES *****************************/
 static const WORD k[64] = {
     0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
@@ -71,7 +73,7 @@ __global__ static void sha256_transform(SHA256_CTX *ctx, const BYTE data[]){
     ctx->state[7] += h;
 }
 
-void sha256_init(SHA256_CTX *ctx)
+__device__ __host__ void sha256_init(SHA256_CTX *ctx)
 {
     ctx->datalen = 0;
     ctx->bitlen = 0;
@@ -85,7 +87,7 @@ void sha256_init(SHA256_CTX *ctx)
     ctx->state[7] = 0x5be0cd19;
 }
 
-void sha256_update(SHA256_CTX *ctx, const BYTE data[], size_t len)
+__device__ __host__ void sha256_update(SHA256_CTX *ctx, const BYTE data[], size_t len)
 {
     WORD i;
     
@@ -93,14 +95,16 @@ void sha256_update(SHA256_CTX *ctx, const BYTE data[], size_t len)
         ctx->data[ctx->datalen] = data[i];
         ctx->datalen++;
         if (ctx->datalen == 64) {
-            sha256_transform(ctx, ctx->data);
+		cudaMemcpy(d_ctx, ctx, datalen*sizeof(int), cudaMemcpyHostToDevice);
+            sha256_transform<<<1,1,0>>>(ctx, ctx->data);
+		cudaMemcpy(ctx, d_ctx, datalen*sizeof(int), cudaMemcpyDeviceToHost);
             ctx->bitlen += 512;
             ctx->datalen = 0;
         }
     }
 }
 
-void sha256_final(SHA256_CTX *ctx, BYTE hash[])
+__device__ __host__ void sha256_final(SHA256_CTX *ctx, BYTE hash[])
 {
     WORD i;
     
@@ -116,7 +120,9 @@ void sha256_final(SHA256_CTX *ctx, BYTE hash[])
         ctx->data[i++] = 0x80;
         while (i < 64)
             ctx->data[i++] = 0x00;
-        sha256_transform(ctx, ctx->data);
+       cudaMemcpy(d_ctx, ctx, datalen*sizeof(int), cudaMemcpyHostToDevice);
+            sha256_transform<<<1,1,0>>>(ctx, ctx->data);
+		cudaMemcpy(ctx, d_ctx, datalen*sizeof(int), cudaMemcpyDeviceToHost);
         memset(ctx->data, 0, 56);
     }
     
@@ -130,7 +136,9 @@ void sha256_final(SHA256_CTX *ctx, BYTE hash[])
     ctx->data[58] = ctx->bitlen >> 40;
     ctx->data[57] = ctx->bitlen >> 48;
     ctx->data[56] = ctx->bitlen >> 56;
-    sha256_transform(ctx, ctx->data);
+   cudaMemcpy(d_ctx, ctx, datalen*sizeof(int), cudaMemcpyHostToDevice);
+            sha256_transform<<<1,1,0>>>(ctx, ctx->data);
+   cudaMemcpy(ctx, d_ctx, datalen*sizeof(int), cudaMemcpyDeviceToHost);
     
     // Since this implementation uses little endian byte ordering and SHA uses big endian,
     // reverse all the bytes when copying the final state to the output hash.

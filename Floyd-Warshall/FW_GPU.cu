@@ -3,66 +3,140 @@
 #include <stdlib.h>
 #include <cuda.h>
 
-#define MAXV 5
 #define max 999
 
-
-typedef struct
+__global__ void Floyd(int n, int ** const A, int ** const path)
 {
-    int edges[MAXV][MAXV];                               //邻接矩阵,可看做边表
-    int n;                                               //图中当前的顶点数和边数
-}MGraph;
 
-
-
-__global__ void Floyd(MGraph g)
-{
-   // printf("%d\n", 0);
-    int A[MAXV][MAXV];
-   // printf("%d\n", 1);
-    int path[MAXV][MAXV];
-   // printf("%d\n", 2);
-    //int i,j,k;
-    //printf("%d\n", 1);
-    int n=g.n;
+   // int i = blockDim.x * blockIdx.x + threadIdx.x;
+   // int j = blockDim.y * blockIdx.y + threadIdx.y;
+   // int k = blockDim.z * blockIdx.z + threadIdx.z;
 
     int i = threadIdx.x;
     int j = threadIdx.y;
     int k = threadIdx.z;
-
-        for(int u = 0; u<n; u++){
-            for(int v = 0; v<n; v++){
-              A[u][v]=g.edges[u][v];
-              path[u][v]=-1;
-            }
-        }
-
-       // for(k=0;k<n;k++)
-       // {
-           // for(i=0;i<n;i++){
-              //  for(j=0; j<n; j++){
-                    if(A[i][j]>(A[i][k]+A[k][j]))
-{
-                        A[i][j]=A[i][k]+A[k][j];
+        if (i < n && j < n && k < n){
+/*
+                int newPath = A[i][k]+A[k][j];
+                int oldPath = A[i][j];
+                    if(oldPath > newPath)
+                    {
+                        A[i][j] = newPath;
                         path[i][j]=k;
                     }
                     if(i == j){
                         A[i][j] = 0;
                     }
+*/
+       if(A[i][j]>(A[i][k]+A[k][j]))
+                {
+                    A[i][j]=A[i][k]+A[k][j];
+                    path[i][j]=k;
+                }
+                if(i == j){
+                    A[i][j] = 0;
+                }
 
-         //       }
-
-          //  }
-            for(int i = 0; i<n; i++){
-                for(int j = 0; j<n; j++){
-                        g.edges[i][j]=A[i][j];
-        }
+                }
 }
 
-}   /*
-    for(i=0;i<n;i++){
-        for(j=0;j<n;j++){
-            if(A[i][j] == 999)
+int main(){
+
+    FILE *fp;
+
+    printf("Begin reading the file...\n");
+
+    fp = fopen("graph.txt","r");
+
+    int MAXV;
+
+    fscanf(fp, "%d", &MAXV);
+
+    int **edges;
+    edges = (int**)malloc(sizeof(int**)*MAXV);
+    for (int i = 0; i < MAXV; i++)
+        edges[i] = (int*)malloc(MAXV*sizeof(int));
+
+    int **A;
+    A = (int**)malloc(sizeof(int**)*MAXV);
+    for (int i = 0; i < MAXV; i++)
+        A[i] = (int*)malloc(MAXV*sizeof(int));
+
+    int **path;
+    path = (int**)malloc(sizeof(int**)*MAXV);
+    for (int i = 0; i < MAXV; i++)
+        path[i] = (int*)malloc(MAXV*sizeof(int));
+
+    for(int i = 0; i<MAXV; i++){
+        for(int j = 0; j<MAXV; j++){
+            edges[i][j]= max;
+        }
+    }
+
+    for(int i = 0; i< MAXV; i++){
+        for(int j = 0; j< MAXV; j++){
+
+            fscanf(fp, "%d ",&edges[i][j]);
+
+        }
+    }
+
+    for(int i=0;i<MAXV;i++)
+    {
+        for(int j=0;j<MAXV;j++)
+        {
+
+            A[i][j]=edges[i][j];
+            path[i][j]=-1;
+        }
+    }
+
+    if(!fp)
+        fclose(fp);
+    printf("Read file complete.\n");
+    printf("the number of node is %d.\n", MAXV);
+
+    for(int i = 0; i<MAXV; i++){
+        for(int j = 0; j<MAXV; j++){
+
+                printf("%d ", edges[i][j]);
+
+        }
+        printf("\n");
+    }
+
+    printf("end\n");
+    printf("///////////////////////////\n");
+    int **d_A;
+    int **d_path;
+    cudaMalloc((void**)&d_A, sizeof(int**)*MAXV);
+    for (int i = 0; i < MAXV; i++)
+         cudaMalloc((void**)&d_A[i], MAXV*sizeof(int));
+
+    cudaMalloc((void**)&d_path, sizeof(int**)*MAXV);
+    for (int i = 0; i < MAXV; i++)
+         cudaMalloc((void**)&d_path[i], MAXV*sizeof(int));
+
+    cudaMemcpy(d_A, A,
+                        sizeof(int)*(MAXV*MAXV), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_path, path,
+                        sizeof(int)*(MAXV*MAXV), cudaMemcpyHostToDevice);
+
+    double start, stop, lapse;
+    start = clock();
+    Floyd<<<1,1,0>>>(MAXV, d_A, d_path);
+    stop = clock();
+    lapse = stop - start;
+    printf("time: %fs\n", lapse);
+    printf("///////////////////////////\n");
+    cudaMemcpy(A, d_A,
+                        sizeof(int)*(MAXV*MAXV), cudaMemcpyDeviceToHost);
+    cudaMemcpy(path, d_path,
+                        sizeof(int)*(MAXV*MAXV), cudaMemcpyDeviceToHost);
+    printf("///////////////////////////\n");
+        for(int i=0;i < MAXV;i++){
+                for(int j = 0;j < MAXV; j++){
+                        if(A[i][j] == 999)
             {
                 printf("%s ", "max");
             }
@@ -73,93 +147,13 @@ __global__ void Floyd(MGraph g)
         }
         printf("\n");
     }
-    printf("/////////////////////////////\n");
-    for(i=0;i<n;i++){
-        for(j=0;j<n;j++){
 
-            printf("%d ", path[i][j]);
-        }
-        printf("\n");
-    }
-*/
-//}
-int main(){
-    MGraph graph;
-    //malloc(MAXV*MAXV*sizeof(int));
+    free(edges);
+    free(A);
+    free(path);
+    cudaFree(d_A);
+    cudaFree(d_path);
 
-    FILE *fp;
-
-    printf("Begin reading the file...\n");
-
-    fp = fopen("graph.txt","r");
-
-    fscanf(fp, "%d", &graph.n);
-
-    for(int i = 0; i<graph.n; i++){
-        for(int j = 0; j<graph.n; j++){
-            graph.edges[i][j]= max;
-        }
-    }
-
-    for(int i = 0; i<graph.n; i++){
-        for(int j = 0; j<graph.n; j++){
-
-            fscanf(fp, "%d ",&graph.edges[i][j]);
-
-        }
-    }
-
-
-   /* for(int i = 0; i<5; i++){
-            fscanf(fp, "%d %d %d", &nodestart, &nodeend, &nodeWeight);
-            graph.edges[nodestart][nodeend] = nodeWeight;
-    }
-    */
-if(!fp)
-        fclose(fp);
-    printf("Read file complete.\n");
-    printf("the number of node is %d.\n", graph.n);
-
-    for(int i = 0; i<graph.n; i++){
-        for(int j = 0; j<graph.n; j++){
-
-                printf("%d ", graph.edges[i][j]);
-
-        }
-        printf("\n");
-    }
-
-    printf("end\n");
-
-    MGraph d_graph;
-
-    cudaMalloc((void**)&d_graph, sizeof(int)*(MAXV*MAXV+1));
-    cudaMemcpy(&d_graph, &graph,
-                        sizeof(int)*(MAXV*MAXV+1), cudaMemcpyHostToDevice
-                        );
-    double start, stop, lapse;
-    start = clock();
-    Floyd<<<1,1,0>>>(d_graph);
-    stop = clock();
-    lapse = stop - start;
-    printf("time: %fs\n", lapse);
-
-    cudaMemcpy(&graph, &d_graph,
-                        sizeof(int)*(MAXV*MAXV+1), cudaMemcpyDeviceToHost);
-
-        for(int i=0;i<graph.n;i++){
-                for(int j=0;j<graph.n;j++){
-                        if(graph.edges[i][j] == 999)
-            {
-                printf("%s ", "max");
-            }
-            else
-            {
-                printf("%d ", graph.edges[i][j]);
-            }
-        }
-        printf("\n");
-    }
-return 0;
+    return 0;
 
 }

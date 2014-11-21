@@ -7,41 +7,25 @@
 
 __global__ void kernel(int n, int size, int * A, int  * path, int check)
 {
-check=check+1;
-    int i = blockDim.x * blockIdx.x + threadIdx.x;
-    int j = blockDim.y * blockIdx.y + threadIdx.y;
-    int k = blockDim.z * blockIdx.z + threadIdx.z;
-check=check+1;
-   // int i = threadIdx.x;
-   // int j = threadIdx.y;
-   // int k = threadIdx.z;
-        if (i < n && j < n && k < n){
 
-                int newPath = A[i*size+k]+A[k*size+j];
-                int oldPath = A[i*size+j];
-                    if(oldPath > newPath)
+   for(int k=0;k<n;k++){
+
+        
+                int i = threadIdx.x;
+                int j = threadIdx.y;
+    
+                    if(A[i*size+j] > A[i*size+k]+A[k*size+j])
                     {
-                        A[i*size+j] = newPath;
+                        A[i*size+j] = A[i*size+k]+A[k*size+j];
                         path[i*size+j]=k;
                     }
                     if(i == j){
                         A[i*size+j] = 0;
                     }
+
         }
-/*       ifA[i*size+j]>(A[i*size+k]+A[k*size+j])
-      {
-            A[i][j]=A[i][k]+A[k][j];
-            path[i][j]=k;
-      }
-      if(i == j)
-      {
-            A[i][j] = 0;
-      }
 
-      }
-*/
 }
-
 int main(){
 
     FILE *fp;
@@ -130,7 +114,9 @@ int main(){
     start = clock();
     int check = 0;
     //call the kernel functioni
-    kernel<<<1,1>>>(MAXV, MAXV, d_A, d_path, check);
+    int numBlocks = 1;
+    dim3 threadsPerBlock(MAXV, MAXV); 
+    kernel<<<numBlocks,threadsPerBlock>>>(MAXV, MAXV, d_A, d_path, check);
     //检查程序是否运行
     printf("%d\n",check);
     stop = clock();

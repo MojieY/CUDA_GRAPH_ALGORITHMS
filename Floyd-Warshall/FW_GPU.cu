@@ -107,16 +107,13 @@ int main(){
 
     printf("end\n");
     printf("///////////////////////////\n");
-    int **d_A;
-    int **d_path;
-    cudaMalloc((void**)&d_A, sizeof(int**)*MAXV);
-    for (int i = 0; i < MAXV; i++)
-         cudaMalloc((void**)&d_A[i], MAXV*sizeof(int));
+    int *d_A;
+    int *d_path;
+    size_t pitch;
+    cudaMallocPitch(&d_A, &pitch, sizeof(int)*MAXV, MAXV);
 
-    cudaMalloc((void**)&d_path, sizeof(int**)*MAXV);
-    for (int i = 0; i < MAXV; i++)
-         cudaMalloc((void**)&d_path[i], MAXV*sizeof(int));
-
+    cudaMallocPitch(&d_path, &pitch, sizeof(int**)*MAXV, MAXV);
+    
     cudaMemcpy(d_A, A,
                         sizeof(int)*(MAXV*MAXV), cudaMemcpyHostToDevice);
     cudaMemcpy(d_path, path,

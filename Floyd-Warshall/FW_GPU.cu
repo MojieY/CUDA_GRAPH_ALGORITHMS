@@ -29,15 +29,16 @@ __global__ void Floyd(int n, int ** const A, int ** const path)
                     }
 */
        if(A[i][j]>(A[i][k]+A[k][j]))
-                {
-                    A[i][j]=A[i][k]+A[k][j];
-                    path[i][j]=k;
-                }
-                if(i == j){
-                    A[i][j] = 0;
-                }
+      {
+            A[i][j]=A[i][k]+A[k][j];
+            path[i][j]=k;
+      }
+      if(i == j)
+      {
+            A[i][j] = 0;
+      }
 
-                }
+      }
 }
 
 int main(){
@@ -83,6 +84,7 @@ int main(){
 
         }
     }
+    
     //close the file
     if(!fp)
         fclose(fp);

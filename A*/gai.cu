@@ -8,6 +8,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <cuda.h>
 
 #define STARTNODE	1
 #define ENDNODE		2
@@ -45,10 +46,10 @@ void swap( int idx1, int idx2 )
 }
 
 
-__global__ void cdp_simple_quicksort( unsigned int *data)
+__global__ void cdp_simple_quicksort(int *data,int left,int right)
 {
-    int left = 0;
-    int right = open_node_count-1;
+    
+    
     unsigned int *lptr = data+left;
     unsigned int *rptr = data+right;
     unsigned int  pivot = data[(left+right)/2];
@@ -108,68 +109,11 @@ __global__ void cdp_simple_quicksort( unsigned int *data)
 void run_qsort(unsigned int *data)
 {
     
+    int left = 0;
+    int right = number-1;
+    cdp_simple_quicksort<<< 1, 1 >>>(data, left, right);
     
-    cdp_simple_quicksort<<< 1, 1 >>>(data);
-    
-    checkCudaErrors(cudaDeviceSynchronize());
-}
-
-// 堆调整
-//
-void adjust_heap( int /*i*/nIndex )
-{
-    int curr = nIndex;
-    int child = curr * 2 + 1;	// 得到左孩子idx( 下标从0开始，所有做孩子是curr*2+1 )
-    int parent = ( curr - 1 ) / 2;	// 得到双亲idx
-    
-    if (nIndex < 0 || nIndex >= open_node_count)
-    {
-        return;
-    }
-    
-    // 往下调整( 要比较左右孩子和cuur parent )
-    //
-    while ( child < open_node_count )
-    {
-        // 小根堆是双亲值小于孩子值
-        //
-        if ( child + 1 < open_node_count && open_table[child]->s_g + open_table[child]->s_h  > open_table[child+1]->s_g + open_table[child+1]->s_h )
-        {
-            ++child;// 判断左右孩子大小
-        }
-        
-        if (open_table[curr]->s_g + open_table[curr]->s_h <= open_table[child]->s_g + open_table[child]->s_h)
-        {
-            break;
-        }
-        else
-        {
-            swap( child, curr );			// 交换节点
-            curr = child;				// 再判断当前孩子节点
-            child = curr * 2 + 1;			// 再判断左孩子
-        }
-    }
-    
-    if (curr != nIndex)
-    {
-        return;
-    }
-    
-    // 往上调整( 只需要比较curr child和parent )
-    //
-    while (curr != 0)
-    {
-        if (open_table[curr]->s_g + open_table[curr]->s_h >= open_table[parent]->s_g + open_table[parent]->s_h)
-        {
-            break;
-        }
-        else
-        {
-            swap( curr, parent );
-            curr = parent;
-            parent = (curr-1)/2;
-        }
-    }
+    cudaDeviceSynchronize();
 }
 
 
@@ -345,7 +289,7 @@ int main()
         
         printf("0\n");
         cudaMemcpy(d_data, open_table, number * sizeof(int), cudaMemcpyHostToDevice);
-        run_qsort(d_data);
+        run_qsort(d_data,);
         cudaMemcpy(open_table, d_data, number * sizeof(int), cudaMemcpyDeviceToHost);
         printf("1\n");
         //adjust_heap( 0 );				// 调整堆

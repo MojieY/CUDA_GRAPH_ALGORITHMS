@@ -127,8 +127,7 @@ void adjust_heap( int /*i*/nIndex )
         return;
     }
     
-    // 往下调整( 要比较左右孩子和cuur parent )
-    //
+    
     while ( child < open_node_count )
     {
         // 小根堆是双亲值小于孩子值
@@ -155,8 +154,6 @@ void adjust_heap( int /*i*/nIndex )
         return;
     }
     
-    // 往上调整( 只需要比较curr child和parent )
-    //
     while (curr != 0)
     {
         if (open_table[curr]->s_g + open_table[curr]->s_h >= open_table[parent]->s_g + open_table[parent]->s_h)

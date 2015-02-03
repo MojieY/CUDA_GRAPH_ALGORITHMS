@@ -74,7 +74,7 @@ cudaDeviceReset();
 return 0;
 }
 
-
+cout<<“node: “<<count<<endl;
 
 
 __global__ void FindClosestGPU(float3* points, int* indices, int count)
